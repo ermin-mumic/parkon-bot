@@ -1,15 +1,19 @@
+import os
 import asyncio
 from playwright.async_api import async_playwright
 
-try:
-    from config.local import URL
-except ImportError:
-    URL = "https://portal.parkon.ch"
+URL = os.getenv("PARKON_URL")
+if not URL:
+    try:
+        from config.local import URL as LOCAL_URL
+        URL = LOCAL_URL
+    except ImportError:
+        URL = "https://portal.parkon.ch"
 
 async def register_car(kanton: str, kennzeichen: str, email: str) -> bool:
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False)
+            browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
             await page.goto(URL)
             await page.wait_for_load_state("networkidle")

@@ -1,16 +1,21 @@
+import os
 from fastapi import FastAPI, HTTPException
 from register_car import register_car
 from pydantic import BaseModel
+from google.cloud import firestore
 
 try:
-    from config.local import BESUCHER
-except ImportError:
-    BESUCHER = {}
+    db = firestore.Client()
+except Exception:
+    db = None
 
-try:
-    from config.local import EMAIL
-except ImportError:
-    EMAIL = "default@example.com"
+EMAIL = os.getenv("CONFIRMATION_EMAIL")
+if not EMAIL:
+    try:
+        from config.local import EMAIL as LOCAL_EMAIL
+        EMAIL = LOCAL_EMAIL
+    except ImportError:
+        EMAIL = ""
 
 app = FastAPI()
 
@@ -20,20 +25,27 @@ class RegisterRequest(BaseModel):
 @app.post("/register")
 async def register(req: RegisterRequest):
 
-    name= req.name.lower()
+    if db is None:
+        return {
+            "status": "error",
+            "code": "db_connection_failed",
+            "message": "Verbindung zur Datenbank fehlgeschlagen."
+        }
+    
+    name= req.name.capitalize()
 
-    if name not in BESUCHER:
+    doc = db.collection("Besucher").document(name).get()
+    if not doc.exists:
         return {
             "status": "error",
             "code": "unbekannter_besucher",
             "message": f"{name} ist als Besucher unbekannt.",
             "person": name
         }
+    data = doc.to_dict()
+    cars= data.get("cars", [])
     
-    cars = BESUCHER[name]
     results= []
-
-
     for car in cars:
         result = await register_car(car["kanton"], car["kennzeichen"], EMAIL)
         results.append(result)
