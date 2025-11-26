@@ -28,11 +28,11 @@ async def register_car(kanton: str, kennzeichen: str, email: str) -> bool:
             await page.get_by_text("23h").click()
 
             await page.get_by_placeholder("E-Mail Adresse").click()
-            #await page.get_by_placeholder("E-Mail Adresse").fill(email)
+            await page.get_by_placeholder("E-Mail Adresse").fill(email)
 
             await page.get_by_role("checkbox", name="Ich akzeptiere die ").check()
 
-            #await page.get_by_role("button", name="Absenden").click()
+            await page.get_by_role("button", name="Absenden").click()
 
 
             await page.wait_for_timeout(2000)
