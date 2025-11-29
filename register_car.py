@@ -10,10 +10,10 @@ if not URL:
     except ImportError:
         URL = "https://portal.parkon.ch"
 
-async def register_car(kanton: str, kennzeichen: str, email: str) -> bool:
+async def register_car(kanton: str, kennzeichen: str, email: str, duration_hours: int) -> bool:
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
+            browser = await p.chromium.launch(headless=False) # Set headless=True for production
             page = await browser.new_page()
             await page.goto(URL)
             await page.wait_for_load_state("networkidle")
@@ -25,17 +25,17 @@ async def register_car(kanton: str, kennzeichen: str, email: str) -> bool:
             await page.get_by_placeholder("354484").fill(kennzeichen)
 
             await page.get_by_placeholder("Auswählen...").nth(1).click()
-            await page.get_by_text("23h").click()
+            await page.get_by_text(f"{duration_hours}h", exact=True).click()
 
             await page.get_by_placeholder("E-Mail Adresse").click()
             await page.get_by_placeholder("E-Mail Adresse").fill(email)
 
             await page.get_by_role("checkbox", name="Ich akzeptiere die ").check()
 
-            await page.get_by_role("button", name="Absenden").click()
+            #await page.get_by_role("button", name="Absenden").click()
 
 
-            await page.wait_for_timeout(2000)
+            await page.wait_for_timeout(1000) #change to 2000 in production
             await browser.close()
         return True
     
