@@ -88,6 +88,4 @@ async def check():
     result = await check_sessions(db, hours_ahead=2)
     return result
 
-
-# add cloud scheduler to trigger that function every hour and also trigger it right after a new session is created (maybe right after this line)
     
