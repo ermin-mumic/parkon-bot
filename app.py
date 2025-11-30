@@ -1,11 +1,12 @@
 import os
 from fastapi import FastAPI, HTTPException, Request
-from register_car import register_car
 from pydantic import BaseModel
 from google.cloud import firestore
 from datetime import datetime, timedelta, timezone
 import zoneinfo
+from helpers.register_car import register_car
 from helpers.duration_parser import parse_duration_text
+from helpers.check_sessions import check_sessions
 
 try:
     db = firestore.Client()
@@ -13,12 +14,6 @@ except Exception:
     db = None
 
 EMAIL = os.getenv("CONFIRMATION_EMAIL")
-if not EMAIL:
-    try:
-        from config.local import EMAIL as LOCAL_EMAIL
-        EMAIL = LOCAL_EMAIL
-    except ImportError:
-        EMAIL = ""
 
 app = FastAPI()
 
@@ -75,17 +70,24 @@ async def register(req: RegisterRequest):
             },
             "startTime": start_time,
             "endTime": end_time,
+            "durationHours": duration_hours,
             "reminderSent": False
         })
 
-    # add function in new file to check for upcoming endTime and send in app notification with pushcut free version
-    # add cloud scheduler to trigger that function every hour and also trigger it right after a new session is created (maybe right after this line)
-    
-
+    if duration_hours <=2:
+        await check_sessions(db, hours_ahead=2)
 
     return {
         "status": "ok",
         "person": name,
         "count": len(cars)
     }
+
+@app.get("/check")
+async def check():
+    result = await check_sessions(db, hours_ahead=2)
+    return result
+
+
+# add cloud scheduler to trigger that function every hour and also trigger it right after a new session is created (maybe right after this line)
     

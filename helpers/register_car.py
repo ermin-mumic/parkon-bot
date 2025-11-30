@@ -2,20 +2,14 @@ import os
 import asyncio
 from playwright.async_api import async_playwright
 
-URL = os.getenv("PARKON_URL")
-if not URL:
-    try:
-        from config.local import URL as LOCAL_URL
-        URL = LOCAL_URL
-    except ImportError:
-        URL = "https://portal.parkon.ch"
+PARKON_URL = os.getenv("PARKON_URL")
 
 async def register_car(kanton: str, kennzeichen: str, email: str, duration_hours: int) -> bool:
     try:
         async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=False) # Set headless=True for production
+            browser = await p.chromium.launch(headless=True)
             page = await browser.new_page()
-            await page.goto(URL)
+            await page.goto(PARKON_URL)
             await page.wait_for_load_state("networkidle")
 
             await page.get_by_placeholder("Auswählen...").nth(0).click()
@@ -32,10 +26,10 @@ async def register_car(kanton: str, kennzeichen: str, email: str, duration_hours
 
             await page.get_by_role("checkbox", name="Ich akzeptiere die ").check()
 
-            #await page.get_by_role("button", name="Absenden").click()
+            await page.get_by_role("button", name="Absenden").click()
 
 
-            await page.wait_for_timeout(1000) #change to 2000 in production
+            await page.wait_for_timeout(1000)
             await browser.close()
         return True
     
