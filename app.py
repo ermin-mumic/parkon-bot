@@ -7,6 +7,7 @@ import zoneinfo
 from helpers.register_car import register_car
 from helpers.duration_parser import parse_duration_text
 from helpers.check_sessions import check_sessions
+from helpers.cleanup_sessions import cleanup_sessions
 
 try:
     db = firestore.Client()
@@ -86,6 +87,11 @@ async def register(req: RegisterRequest):
 @app.get("/check")
 async def check():
     result = await check_sessions(db, hours_ahead=2)
+    return result
+
+@app.get("/cleanup")
+async def cleanup():
+    result = cleanup_sessions(db, keep_days=30)
     return result
 
     
