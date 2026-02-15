@@ -15,7 +15,7 @@ def cleanup_sessions(db, keep_days: int=30) -> dict:
     query = db.collection("Sessions").where("endTime", "<=", cutoff)
 
     deleted = 0
-    batch = db.batch
+    batch = db.batch()
     batch_count = 0
 
     for doc in query.stream():
@@ -25,7 +25,7 @@ def cleanup_sessions(db, keep_days: int=30) -> dict:
 
         if batch_count >= 500:
             batch.commit()
-            batch = db.batch
+            batch = db.batch()
             batch_count = 0
     if batch_count > 0:
         batch.commit()
