@@ -68,3 +68,154 @@ you forgot to extend your visitors parking.
 ----------
   
 ## Launch & Deployment
+
+### Prerequisites
+- Python 3.10+ installed on your machine
+- Google Cloud Project with Firestore enabled (Native Mode)
+- ntfy app installed on your IPhone
+- gcloud CLI installed (optional, for deployment)
+- Docker (optional, for containerized deployment)
+
+### Local Setup
+
+1. **Download and Install**
+```
+# Clone the repository
+git clone https://github.com/ermin-mumic/parkon-bot.git
+cd parkon-bot
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate   # Mac/Linux or venv\Scripts\activate on Windows
+
+# Install Python requirements
+pip install -r requirements.txt
+
+# Install Playwright browsers and dependencies
+playwright install --with-deps chromium
+```
+2. **Connect Firestore**
+The bot uses a Service Account to securely talk to your database.
+   1. Go to IAM & Admin > Service Accounts in your Google Cloud Console
+   2. Create a service account with the Cloud Datastore User role
+   3. Generate a JSON Key and rename it to `service-account.json`
+   4. Place this file in a folder named `/keys`at the root of your project. This folder is already ignored by Git
+
+3. **Database Setup**
+In your Firestore console, manually create the following:
+  - Collection: `Besucher` (here is where you add all your visitors information)
+    1. Create document(s) named after a person (e.g., Max)
+    2. Add a field `name` (String)
+    3. Add a field `cars`(Array)
+    4. Add object(s) to the array:
+    ```
+    {
+    "kanton": "ZH",
+    "kennzeichen": "123456"
+    }
+    ```
+
+- Collection: `Sessions` will be created automtically by the bot.
+
+4. **Environment Variables**
+You can set them in your terminal or in a `.env` file:
+```
+export PARKON_URL="https://your-parkon-link.ch"
+export CONFIRMATION_EMAIL="your-email@example.com"
+export NTFY_TOPIC="your-private-topic"
+# for ntfy notifications to work PUBLIC_URL must be publicly reachable
+export PUBLIC_URL="http://localhost:8080" 
+export GOOGLE_APPLICATION_CREDENTIALS="keys/service-account.json"
+```
+- PARKON_URL: The URL of the parking form.
+- CONFIRMATION_EMAIL: Where Parkon sends confirmation receipts.
+- NTFY_TOPIC: Your unique topic for push notifications.
+- PUBLIC_URL: Address of your bot.
+
+5. **Run the Bot**
+```
+python -m uvicorn app:app --host 0.0.0.0 --port 8080
+```
+
+### Siri & ntfy Configuration
+This allows you to receive notifications and interact with Siri for an automated registration process.
+
+1. Setup ntfy
+   1. create a new subscription to the same topic you set in `NTFY_TOPIC`
+  
+2. Setup Siri Shortcut
+  1. Download the [shortcut template](assets/shortcuts/Template.shortcut) with your IPhone
+  2. Import it into the Shortcuts app and edit the shortcut
+  3. Change the title of the Shortcut from "Template" to something you want Siri to react when saying "Hey Siri, x" (e.g., "Melde einen Besucher an")
+  4. Add your `PUBLIC_URL/register` to step 3 in the shortcut (e.g., `http://localhost:8080`for local or your cloud URL)
+
+     <img src="assets/images/shortcut_guide.png" alt="Shortcut Guide" width="400"/>
+
+### Deployment on Google Cloud Run
+
+1. **Install and authenticate gcloud**
+   
+   - if not installed: `https://cloud.google.com/sdk/docs/install`
+  
+```
+gcloud auth login
+gcloud config set project YOUR_PROJECT_ID
+
+# verify
+gcloud config list
+```
+2. **Enable Required APIs**
+
+```
+gcloud services enable \
+  run.googleapis.com \
+  cloudbuild.googleapis.com \
+  firestore.googleapis.com \
+  cloudscheduler.googleapis.com
+```
+
+3. **Build and Push Docker Image**
+From the project root:
+```
+gcloud builds submit --tag gcr.io/YOUR_PROJECT_ID/parkon-bot
+```
+
+4. **Deploy to Cloud Run**
+```
+gcloud run deploy parkon-bot \
+  --image gcr.io/YOUR_PROJECT_ID/parkon-bot \
+  --region europe-west6 \
+  --platform managed \
+  --allow-unauthenticated
+```
+
+- After deployment you receive a `PUBLIC_URL`
+
+5. **Configure Environment Variables in Cloud Run**
+
+- Add all environment variables as in Step 4 of the Local Setup in Cloud Run Console
+
+6. **Create Cloud Scheduler Jobs**
+In your Google Cloud Console > Cloud Scheduler
+
+- create a scheduler with your `PUBLIC_URL/check` for every minute (this way it also keeps an instance warm all the time)
+
+- create a scheduler with your `PUBLIC_URL/cleanup`for every first of a month
+
+----------
+
+## Technology Stack
+
+- **Language**: Python 3.10+ - Core Programming
+- **Framework**: FastAPI - Web API
+- **Browser Automation**: Playwright - Headless browser for form submission
+- **Database**: Google Cloud Firestore - NoSQL storage
+- **Deployment**: Docker - Containerization
+- **Notification**: ntfy Notification service via Google Cloud Scheduler
+
+----------
+
+> **_NOTE:_**  This project is for personal automation. Ensure usage complies with the parking provider's terms of service.
+
+
+
